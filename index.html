@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f766e">
+  <meta name="description" content="A private, installable monthly budget and scenario-planning tool.">
+  <title>SOMA Budget Planner</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#budget">Skip to budget</a>
+  <header class="site-header">
+    <div>
+      <p class="eyebrow">Private by design</p>
+      <h1>SOMA Budget Planner</h1>
+      <p class="subtitle">Plan a month, compare budget with actual spending, and test what changes.</p>
+    </div>
+    <div class="header-actions" aria-label="Budget actions">
+      <button class="secondary" id="exportButton" type="button">Export</button>
+      <button class="secondary" id="importButton" type="button">Import</button>
+      <button class="secondary" id="printButton" type="button">Print</button>
+      <button class="danger" id="resetButton" type="button">Reset</button>
+      <input id="importFile" type="file" accept="application/json,.json" hidden>
+    </div>
+  </header>
+
+  <main id="budget" class="app-shell">
+    <section class="period-panel" aria-labelledby="periodHeading">
+      <div>
+        <p class="section-kicker">Planning period</p>
+        <h2 id="periodHeading">Monthly snapshot</h2>
+      </div>
+      <label class="month-field">Month
+        <input id="budgetMonth" type="month">
+      </label>
+      <p id="saveStatus" class="save-status" role="status" aria-live="polite">Saved on this device</p>
+    </section>
+
+    <section class="summary-grid" aria-label="Budget summary">
+      <article class="summary-card income-card">
+        <span>Net income</span>
+        <strong id="incomeSummary">$0</strong>
+      </article>
+      <article class="summary-card">
+        <span>Budgeted expenses</span>
+        <strong id="budgetSummary">$0</strong>
+      </article>
+      <article class="summary-card">
+        <span>Actual expenses</span>
+        <strong id="actualSummary">$0</strong>
+      </article>
+      <article class="summary-card" id="remainingCard">
+        <span>Remaining after actuals</span>
+        <strong id="remainingSummary">$0</strong>
+      </article>
+      <article class="summary-card">
+        <span>Savings rate</span>
+        <strong id="savingsSummary">0%</strong>
+      </article>
+    </section>
+
+    <section class="income-panel" aria-labelledby="incomeHeading">
+      <div>
+        <p class="section-kicker">Money coming in</p>
+        <h2 id="incomeHeading">Monthly income</h2>
+      </div>
+      <label class="money-field"><span>Net income</span>
+        <span class="money-input"><span aria-hidden="true">$</span><input id="netIncome" type="number" inputmode="decimal" min="0" step="50" aria-label="Monthly net income"></span>
+      </label>
+    </section>
+
+    <section aria-labelledby="categoriesHeading">
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">Money going out</p>
+          <h2 id="categoriesHeading">Expense categories</h2>
+        </div>
+        <button class="primary" id="addCategoryButton" type="button">Add category</button>
+      </div>
+      <div id="categoryList" class="category-list"></div>
+    </section>
+
+    <section class="privacy-note" aria-labelledby="privacyHeading">
+      <div aria-hidden="true" class="privacy-icon">✓</div>
+      <div>
+        <h2 id="privacyHeading">Your numbers stay private</h2>
+        <p>This version stores information only in this browser. Nothing is sent to a server. Export a backup before clearing browser data or moving to another device.</p>
+      </div>
+    </section>
+  </main>
+
+  <template id="categoryTemplate">
+    <article class="category-card">
+      <header class="category-header">
+        <div>
+          <input class="category-name" type="text" aria-label="Category name" maxlength="50">
+          <p class="category-totals"><span class="category-budget">$0</span> budgeted · <span class="category-actual">$0</span> actual</p>
+        </div>
+        <div class="category-actions">
+          <button class="text-button add-item" type="button">Add item</button>
+          <button class="icon-button remove-category" type="button" aria-label="Remove category">×</button>
+        </div>
+      </header>
+      <div class="item-table" role="table" aria-label="Budget items">
+        <div class="item-row item-head" role="row">
+          <span role="columnheader">Item</span><span role="columnheader">Budget</span><span role="columnheader">Actual</span><span aria-hidden="true"></span>
+        </div>
+        <div class="items"></div>
+      </div>
+    </article>
+  </template>
+
+  <template id="itemTemplate">
+    <div class="item-row" role="row">
+      <input class="item-name" type="text" maxlength="70" aria-label="Expense item">
+      <label class="compact-money"><span aria-hidden="true">$</span><input class="item-budget" type="number" inputmode="decimal" min="0" step="5" aria-label="Budgeted amount"></label>
+      <label class="compact-money"><span aria-hidden="true">$</span><input class="item-actual" type="number" inputmode="decimal" min="0" step="5" aria-label="Actual amount"></label>
+      <button class="icon-button remove-item" type="button" aria-label="Remove item">×</button>
+    </div>
+  </template>
+
+  <dialog id="confirmDialog">
+    <form method="dialog">
+      <h2>Reset this budget?</h2>
+      <p>This replaces the current month with the original sample budget. Export first if you want a backup.</p>
+      <div class="dialog-actions">
+        <button value="cancel" class="secondary">Cancel</button>
+        <button value="confirm" class="danger">Reset budget</button>
+      </div>
+    </form>
+  </dialog>
+
+  <noscript>This tool requires JavaScript to calculate and save your budget.</noscript>
+</body>
+</html>

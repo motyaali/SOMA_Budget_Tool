@@ -6,9 +6,11 @@ A private, installable monthly budget and scenario-planning tool. It compares bu
 
 - Editable income, categories, and expense items
 - Budgeted versus actual tracking
-- Monthly summary and category totals
+- True month-by-month budgets with copy-forward planning
+- Monthly summary, visual spend progress, and category variance alerts
 - Automatic local saving
 - JSON backup and restore
+- CSV history export
 - Print-friendly summary
 - Responsive, keyboard-accessible interface
 - Installable Progressive Web App with offline support

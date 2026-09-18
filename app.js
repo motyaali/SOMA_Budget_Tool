@@ -1,198 +1,38 @@
 (() => {
   "use strict";
-
-  const STORAGE_KEY = "soma-budget-planner-v1";
-  const $ = (selector, root = document) => root.querySelector(selector);
-  const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
-  const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
-
-  const currentMonth = () => new Date().toISOString().slice(0, 7);
-  const uid = () => globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  const amount = (value) => Math.max(0, Number.isFinite(Number(value)) ? Number(value) : 0);
-
-  const sampleState = () => ({
-    version: 1,
-    month: currentMonth(),
-    income: 8500,
-    categories: [
-      { id: uid(), name: "Housing", items: [
-        { id: uid(), name: "Rent (SOMA 1BR)", budget: 3500, actual: 3500 },
-        { id: uid(), name: "Renter's Insurance", budget: 25, actual: 25 }
-      ]},
-      { id: uid(), name: "Utilities", items: [
-        { id: uid(), name: "PG&E", budget: 120, actual: 0 },
-        { id: uid(), name: "Internet & Phone", budget: 165, actual: 0 },
-        { id: uid(), name: "Water & Garbage", budget: 60, actual: 0 }
-      ]},
-      { id: uid(), name: "Food & Pet Care", items: [
-        { id: uid(), name: "Groceries", budget: 450, actual: 0 },
-        { id: uid(), name: "Dining Out & Coffee", budget: 350, actual: 0 },
-        { id: uid(), name: "Pet Care (Diggy)", budget: 100, actual: 0 }
-      ]},
-      { id: uid(), name: "Lifestyle & Transit", items: [
-        { id: uid(), name: "Entertainment & Nightlife", budget: 300, actual: 0 },
-        { id: uid(), name: "Transit & Rideshare", budget: 150, actual: 0 },
-        { id: uid(), name: "Subscriptions", budget: 100, actual: 0 }
-      ]}
-    ]
-  });
-
-  const normalize = (candidate) => {
-    if (!candidate || typeof candidate !== "object" || !Array.isArray(candidate.categories)) throw new Error("Invalid budget file");
-    return {
-      version: 1,
-      month: /^\d{4}-\d{2}$/.test(candidate.month || "") ? candidate.month : currentMonth(),
-      income: amount(candidate.income),
-      categories: candidate.categories.map(category => ({
-        id: String(category.id || uid()),
-        name: String(category.name || "Untitled category").slice(0, 50),
-        items: Array.isArray(category.items) ? category.items.map(item => ({
-          id: String(item.id || uid()),
-          name: String(item.name || "Untitled item").slice(0, 70),
-          budget: amount(item.budget),
-          actual: amount(item.actual)
-        })) : []
-      }))
-    };
-  };
-
-  const load = () => {
-    try { return normalize(JSON.parse(localStorage.getItem(STORAGE_KEY))) } catch { return sampleState(); }
-  };
-
-  let state = load();
-  let saveTimer;
-
-  const totals = () => {
-    const budget = state.categories.flatMap(c => c.items).reduce((sum, item) => sum + amount(item.budget), 0);
-    const actual = state.categories.flatMap(c => c.items).reduce((sum, item) => sum + amount(item.actual), 0);
-    const remaining = state.income - actual;
-    return { budget, actual, remaining, savingsRate: state.income > 0 ? (remaining / state.income) * 100 : 0 };
-  };
-
-  const save = () => {
-    $("#saveStatus").textContent = "Saving…";
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      $("#saveStatus").textContent = "Saved on this device";
-    }, 180);
-  };
-
-  const renderSummary = () => {
-    const t = totals();
-    $("#incomeSummary").textContent = money.format(state.income);
-    $("#budgetSummary").textContent = money.format(t.budget);
-    $("#actualSummary").textContent = money.format(t.actual);
-    $("#remainingSummary").textContent = money.format(t.remaining);
-    $("#savingsSummary").textContent = `${Math.round(t.savingsRate)}%`;
-    $("#remainingCard").classList.toggle("negative", t.remaining < 0);
-  };
-
-  const categoryTotals = (category) => ({
-    budget: category.items.reduce((sum, item) => sum + amount(item.budget), 0),
-    actual: category.items.reduce((sum, item) => sum + amount(item.actual), 0)
-  });
-
-  const render = () => {
-    $("#budgetMonth").value = state.month;
-    $("#netIncome").value = state.income;
-    const list = $("#categoryList");
-    list.replaceChildren();
-
-    state.categories.forEach(category => {
-      const card = $("#categoryTemplate").content.firstElementChild.cloneNode(true);
-      card.dataset.id = category.id;
-      $(".category-name", card).value = category.name;
-      const ct = categoryTotals(category);
-      $(".category-budget", card).textContent = money.format(ct.budget);
-      $(".category-actual", card).textContent = money.format(ct.actual);
-      const items = $(".items", card);
-
-      category.items.forEach(item => {
-        const row = $("#itemTemplate").content.firstElementChild.cloneNode(true);
-        row.dataset.id = item.id;
-        $(".item-name", row).value = item.name;
-        $(".item-budget", row).value = item.budget;
-        $(".item-actual", row).value = item.actual;
-        items.append(row);
-      });
-      list.append(card);
-    });
-    renderSummary();
-  };
-
-  const findCategory = (element) => state.categories.find(c => c.id === element.closest(".category-card")?.dataset.id);
-  const findItem = (element, category) => category?.items.find(i => i.id === element.closest(".item-row")?.dataset.id);
-
-  $("#budgetMonth").addEventListener("change", event => { state.month = event.target.value || currentMonth(); save(); });
-  $("#netIncome").addEventListener("input", event => { state.income = amount(event.target.value); renderSummary(); save(); });
-
-  $("#categoryList").addEventListener("input", event => {
-    const category = findCategory(event.target);
-    if (!category) return;
-    if (event.target.matches(".category-name")) category.name = event.target.value;
-    const item = findItem(event.target, category);
-    if (item && event.target.matches(".item-name")) item.name = event.target.value;
-    if (item && event.target.matches(".item-budget")) item.budget = amount(event.target.value);
-    if (item && event.target.matches(".item-actual")) item.actual = amount(event.target.value);
-    const ct = categoryTotals(category);
-    const card = event.target.closest(".category-card");
-    $(".category-budget", card).textContent = money.format(ct.budget);
-    $(".category-actual", card).textContent = money.format(ct.actual);
-    renderSummary();
-    save();
-  });
-
-  $("#categoryList").addEventListener("click", event => {
-    const category = findCategory(event.target);
-    if (!category) return;
-    if (event.target.closest(".add-item")) {
-      category.items.push({ id: uid(), name: "New expense", budget: 0, actual: 0 });
-    } else if (event.target.closest(".remove-item")) {
-      const item = findItem(event.target, category);
-      category.items = category.items.filter(i => i.id !== item?.id);
-    } else if (event.target.closest(".remove-category")) {
-      state.categories = state.categories.filter(c => c.id !== category.id);
-    } else return;
-    render(); save();
-  });
-
-  $("#addCategoryButton").addEventListener("click", () => {
-    state.categories.push({ id: uid(), name: "New category", items: [{ id: uid(), name: "New expense", budget: 0, actual: 0 }] });
-    render(); save();
-    $$(".category-name").at(-1)?.focus();
-  });
-
-  $("#exportButton").addEventListener("click", () => {
-    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `soma-budget-${state.month}.json`;
-    link.click();
-    URL.revokeObjectURL(link.href);
-  });
-
-  $("#importButton").addEventListener("click", () => $("#importFile").click());
-  $("#importFile").addEventListener("change", async event => {
-    const [file] = event.target.files;
-    if (!file) return;
-    try {
-      state = normalize(JSON.parse(await file.text()));
-      render(); save();
-    } catch { alert("That file is not a valid SOMA Budget Planner export."); }
-    event.target.value = "";
-  });
-
-  $("#printButton").addEventListener("click", () => print());
-  $("#resetButton").addEventListener("click", () => $("#confirmDialog").showModal());
-  $("#confirmDialog").addEventListener("close", event => {
-    if (event.target.returnValue === "confirm") { state = sampleState(); render(); save(); }
-  });
-
-  render();
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("service-worker.js");
-
-  globalThis.SomaBudget = { amount, normalize, totals: data => { const before = state; state = normalize(data); const result = totals(); state = before; return result; } };
+  const KEY="soma-budget-planner-v2", OLD="soma-budget-planner-v1";
+  const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+  const money=new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0});
+  const now=()=>new Date().toISOString().slice(0,7), uid=()=>crypto.randomUUID?.()||`${Date.now()}-${Math.random()}`;
+  const amount=v=>Math.max(0,Number.isFinite(Number(v))?Number(v):0);
+  const label=m=>new Intl.DateTimeFormat("en-US",{month:"long",year:"numeric",timeZone:"UTC"}).format(new Date(`${m}-01T00:00:00Z`));
+  const sample=(month=now())=>({month,income:8500,categories:[
+    {id:uid(),name:"Housing",items:[{id:uid(),name:"Rent (SOMA 1BR)",budget:3500,actual:3500},{id:uid(),name:"Renter's Insurance",budget:25,actual:25}]},
+    {id:uid(),name:"Utilities",items:[{id:uid(),name:"PG&E",budget:120,actual:0},{id:uid(),name:"Internet & Phone",budget:165,actual:0},{id:uid(),name:"Water & Garbage",budget:60,actual:0}]},
+    {id:uid(),name:"Food & Pet Care",items:[{id:uid(),name:"Groceries",budget:450,actual:0},{id:uid(),name:"Dining Out & Coffee",budget:350,actual:0},{id:uid(),name:"Pet Care (Diggy)",budget:100,actual:0}]},
+    {id:uid(),name:"Lifestyle & Transit",items:[{id:uid(),name:"Entertainment & Nightlife",budget:300,actual:0},{id:uid(),name:"Transit & Rideshare",budget:150,actual:0},{id:uid(),name:"Subscriptions",budget:100,actual:0}]}
+  ]});
+  const clean=(b,month=now())=>({month:/^\d{4}-\d{2}$/.test(b?.month||"")?b.month:month,income:amount(b?.income),categories:Array.isArray(b?.categories)?b.categories.map(c=>({id:String(c.id||uid()),name:String(c.name||"Untitled category").slice(0,50),items:Array.isArray(c.items)?c.items.map(i=>({id:String(i.id||uid()),name:String(i.name||"Untitled item").slice(0,70),budget:amount(i.budget),actual:amount(i.actual)})):[]})):[]});
+  const clone=(b,month)=>({month,income:b.income,categories:b.categories.map(c=>({id:uid(),name:c.name,items:c.items.map(i=>({id:uid(),name:i.name,budget:i.budget,actual:0}))}))});
+  const load=()=>{try{const s=JSON.parse(localStorage.getItem(KEY));if(s?.version===2&&s.months){const months=Object.fromEntries(Object.entries(s.months).map(([k,v])=>[k,clean(v,k)]));const activeMonth=months[s.activeMonth]?s.activeMonth:Object.keys(months)[0]||now();if(!months[activeMonth])months[activeMonth]=sample(activeMonth);return{version:2,activeMonth,months}}}catch{}try{const old=JSON.parse(localStorage.getItem(OLD));if(old?.categories){const b=clean(old);return{version:2,activeMonth:b.month,months:{[b.month]:b}}}}catch{}const b=sample();return{version:2,activeMonth:b.month,months:{[b.month]:b}}};
+  let store=load(), timer; const active=()=>store.months[store.activeMonth];
+  const totals=(b=active())=>{const items=b.categories.flatMap(c=>c.items),planned=items.reduce((s,i)=>s+amount(i.budget),0),actual=items.reduce((s,i)=>s+amount(i.actual),0);return{planned,actual,remaining:b.income-actual,plannedBalance:b.income-planned,spentRate:planned?actual/planned*100:0}};
+  const catTotals=c=>({planned:c.items.reduce((s,i)=>s+amount(i.budget),0),actual:c.items.reduce((s,i)=>s+amount(i.actual),0)});
+  const save=()=>{$("#saveStatus").textContent="Saving...";clearTimeout(timer);timer=setTimeout(()=>{localStorage.setItem(KEY,JSON.stringify(store));$("#saveStatus").textContent="Saved on this device"},160)};
+  const message=t=>!t.planned?"Add planned expenses to see how the month is shaping up.":t.plannedBalance<0?`Your plan is ${money.format(Math.abs(t.plannedBalance))} above income. Reduce planned spending before the month begins.`:t.spentRate>100?`Actual spending is ${money.format(t.actual-t.planned)} over budget. Review the categories marked in red.`:t.spentRate>=80?`You have used ${Math.round(t.spentRate)}% of the expense budget, with ${money.format(t.remaining)} of income remaining.`:`The plan leaves ${money.format(t.plannedBalance)} unassigned. Actual spending is ${Math.round(t.spentRate)}% of the expense budget.`;
+  const renderSummary=()=>{const b=active(),t=totals(b),cap=Math.min(100,Math.max(0,t.spentRate));$("#incomeSummary").textContent=money.format(b.income);$("#budgetSummary").textContent=money.format(t.planned);$("#actualSummary").textContent=money.format(t.actual);$("#remainingSummary").textContent=money.format(t.remaining);$("#plannedSummary").textContent=money.format(t.plannedBalance);$("#remainingCard").classList.toggle("negative",t.remaining<0);$("#spentPercent").textContent=`${Math.round(t.spentRate)}%`;$("#budgetInsight").textContent=message(t);$("#budgetDonut").style.setProperty("--spent",`${cap*3.6}deg`);$("#overallProgress").style.width=`${cap}%`};
+  const render=()=>{const b=active();$("#budgetMonth").value=store.activeMonth;$("#periodHeading").textContent=label(store.activeMonth);$("#netIncome").value=b.income;const list=$("#categoryList");list.replaceChildren();b.categories.forEach(c=>{const card=$("#categoryTemplate").content.firstElementChild.cloneNode(true);card.dataset.id=c.id;$(".category-name",card).value=c.name;const t=catTotals(c),variance=t.planned-t.actual,rate=t.planned?t.actual/t.planned*100:0;$(".category-budget",card).textContent=money.format(t.planned);$(".category-actual",card).textContent=money.format(t.actual);const v=$(".category-variance",card);v.textContent=variance>=0?`${money.format(variance)} left`:`${money.format(Math.abs(variance))} over`;v.classList.toggle("over",variance<0);const bar=$(".category-progress span",card);bar.style.width=`${Math.min(100,rate)}%`;bar.classList.toggle("over",rate>100);const items=$(".items",card);c.items.forEach(i=>{const row=$("#itemTemplate").content.firstElementChild.cloneNode(true);row.dataset.id=i.id;$(".item-name",row).value=i.name;$(".item-budget",row).value=i.budget;$(".item-actual",row).value=i.actual;items.append(row)});list.append(card)});renderSummary()};
+  const findCat=e=>active().categories.find(c=>c.id===e.closest(".category-card")?.dataset.id),findItem=(e,c)=>c?.items.find(i=>i.id===e.closest(".item-row")?.dataset.id);
+  $("#budgetMonth").addEventListener("change",e=>{const m=e.target.value||now();if(!store.months[m])store.months[m]={month:m,income:0,categories:[]};store.activeMonth=m;render();save()});
+  $("#copyMonthButton").addEventListener("click",()=>{const months=Object.keys(store.months).filter(m=>m<store.activeMonth).sort(),source=store.months[months.at(-1)];if(!source)return alert("There is no earlier saved month to copy.");store.months[store.activeMonth]=clone(source,store.activeMonth);render();save()});
+  $("#netIncome").addEventListener("input",e=>{active().income=amount(e.target.value);renderSummary();save()});
+  $("#categoryList").addEventListener("input",e=>{const c=findCat(e.target);if(!c)return;if(e.target.matches(".category-name"))c.name=e.target.value;const i=findItem(e.target,c);if(i&&e.target.matches(".item-name"))i.name=e.target.value;if(i&&e.target.matches(".item-budget"))i.budget=amount(e.target.value);if(i&&e.target.matches(".item-actual"))i.actual=amount(e.target.value);render();save()});
+  $("#categoryList").addEventListener("click",e=>{const c=findCat(e.target);if(!c)return;if(e.target.closest(".add-item"))c.items.push({id:uid(),name:"New expense",budget:0,actual:0});else if(e.target.closest(".remove-item")){const i=findItem(e.target,c);c.items=c.items.filter(x=>x.id!==i?.id)}else if(e.target.closest(".remove-category"))active().categories=active().categories.filter(x=>x.id!==c.id);else return;render();save()});
+  $("#addCategoryButton").addEventListener("click",()=>{active().categories.push({id:uid(),name:"New category",items:[{id:uid(),name:"New expense",budget:0,actual:0}]});render();save();$$(".category-name").at(-1)?.focus()});
+  const download=(content,type,name)=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();URL.revokeObjectURL(a.href)};
+  $("#exportButton").addEventListener("click",()=>download(JSON.stringify(store,null,2),"application/json","soma-budget-backup.json"));
+  $("#csvButton").addEventListener("click",()=>{const rows=[["Month","Category","Item","Budget","Actual"]];Object.entries(store.months).sort().forEach(([m,b])=>b.categories.forEach(c=>c.items.forEach(i=>rows.push([m,c.name,i.name,i.budget,i.actual]))));download(rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(",")).join("\n"),"text/csv","soma-budget-history.csv")});
+  $("#importButton").addEventListener("click",()=>$("#importFile").click());$("#importFile").addEventListener("change",async e=>{const[file]=e.target.files;if(!file)return;try{const data=JSON.parse(await file.text());if(data?.version===2&&data.months)localStorage.setItem(KEY,JSON.stringify(data));else if(data?.categories)localStorage.setItem(OLD,JSON.stringify(data));else throw Error();store=load();render();save()}catch{alert("That file is not a valid SOMA Budget Planner backup.")}e.target.value=""});
+  $("#printButton").addEventListener("click",()=>print());$("#resetButton").addEventListener("click",()=>$("#confirmDialog").showModal());$("#confirmDialog").addEventListener("close",e=>{if(e.target.returnValue==="confirm"){store.months[store.activeMonth]=sample(store.activeMonth);render();save()}});
+  render();localStorage.setItem(KEY,JSON.stringify(store));if("serviceWorker" in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("service-worker.js");
 })();

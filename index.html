@@ -8,8 +8,8 @@
   <title>SOMA Budget Planner</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=3">
-  <script src="app.js?v=3" defer></script>
+  <link rel="stylesheet" href="styles.css?v=4">
+  <script src="app.js?v=4" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#budget">Skip to budget</a>
@@ -20,6 +20,7 @@
       <p class="subtitle">A clearer view of what is planned, what is spent, and what remains.</p>
     </div>
     <div class="header-actions" aria-label="Budget actions">
+      <button class="secondary" id="themeButton" type="button" aria-pressed="false">Dark mode</button>
       <button class="secondary" id="exportButton" type="button">Export</button>
       <button class="secondary" id="csvButton" type="button">CSV</button>
       <button class="secondary" id="importButton" type="button">Import</button>
@@ -83,6 +84,27 @@
       </article>
     </section>
 
+    <section class="intelligence-panel" aria-labelledby="intelligenceHeading">
+      <div class="intelligence-heading">
+        <div>
+          <p class="section-kicker">This month</p>
+          <h2 id="intelligenceHeading">Spending guidance</h2>
+        </div>
+        <p id="paceStatus" class="pace-status">Add flexible expenses to calculate your pace.</p>
+      </div>
+      <div class="intelligence-grid">
+        <article><span>Days remaining</span><strong id="daysRemaining">0</strong></article>
+        <article><span>Flexible budget left</span><strong id="flexibleRemaining">$0</strong></article>
+        <article><span>Safe to spend daily</span><strong id="safeDaily">$0</strong></article>
+        <article><span>Projected month end</span><strong id="projectedBalance">$0</strong></article>
+      </div>
+      <div class="pace-track" id="paceTrack" role="progressbar" aria-label="Flexible spending pace" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <span class="pace-fill" id="paceFill"></span>
+        <span class="pace-marker" id="paceMarker" aria-hidden="true"></span>
+      </div>
+      <div class="pace-legend"><span><i class="dot actual-dot"></i>Flexible budget used</span><span><i class="pace-marker-key"></i>Month elapsed</span></div>
+    </section>
+
     <section class="income-panel" aria-labelledby="incomeHeading">
       <div>
         <p class="section-kicker">Money coming in</p>
@@ -117,7 +139,10 @@
     <article class="category-card">
       <header class="category-header">
         <div>
-          <input class="category-name" type="text" aria-label="Category name" maxlength="50">
+          <div class="category-title-row">
+            <input class="category-name" type="text" aria-label="Category name" maxlength="50">
+            <label class="category-type-label"><span class="sr-only">Category spending type</span><select class="category-type" aria-label="Category spending type"><option value="flexible">Flexible</option><option value="fixed">Fixed</option></select></label>
+          </div>
           <p class="category-totals"><span class="category-budget">$0</span> budgeted · <span class="category-actual">$0</span> actual · <span class="category-variance">$0 left</span></p>
           <div class="category-progress" aria-hidden="true"><span></span></div>
         </div>
@@ -154,6 +179,8 @@
       </div>
     </form>
   </dialog>
+
+  <div class="sr-only" id="srAnnouncer" aria-live="polite"></div>
 
   <noscript>This tool requires JavaScript to calculate and save your budget.</noscript>
 </body>

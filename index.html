@@ -17,10 +17,11 @@
     <div>
       <p class="eyebrow">Private by design</p>
       <h1>SOMA Budget Planner</h1>
-      <p class="subtitle">Plan a month, compare budget with actual spending, and test what changes.</p>
+      <p class="subtitle">A clearer view of what is planned, what is spent, and what remains.</p>
     </div>
     <div class="header-actions" aria-label="Budget actions">
       <button class="secondary" id="exportButton" type="button">Export</button>
+      <button class="secondary" id="csvButton" type="button">CSV</button>
       <button class="secondary" id="importButton" type="button">Import</button>
       <button class="secondary" id="printButton" type="button">Print</button>
       <button class="danger" id="resetButton" type="button">Reset</button>
@@ -34,10 +35,29 @@
         <p class="section-kicker">Planning period</p>
         <h2 id="periodHeading">Monthly snapshot</h2>
       </div>
-      <label class="month-field">Month
+      <label class="month-field">Budget month
         <input id="budgetMonth" type="month">
       </label>
+      <button class="secondary copy-button" id="copyMonthButton" type="button">Copy previous month</button>
       <p id="saveStatus" class="save-status" role="status" aria-live="polite">Saved on this device</p>
+    </section>
+
+    <section class="dashboard-panel" aria-labelledby="overviewHeading">
+      <div class="balance-visual">
+        <div class="donut" id="budgetDonut" role="img" aria-label="Percent of budget spent">
+          <div><strong id="spentPercent">0%</strong><span>of budget spent</span></div>
+        </div>
+      </div>
+      <div class="overview-copy">
+        <p class="section-kicker">At a glance</p>
+        <h2 id="overviewHeading">Your monthly position</h2>
+        <p id="budgetInsight" class="budget-insight">Add your numbers to see a budget health summary.</p>
+        <div class="overall-progress" aria-hidden="true"><span id="overallProgress"></span></div>
+        <div class="overview-legend">
+          <span><i class="dot actual-dot"></i>Actual spending</span>
+          <span><i class="dot remaining-dot"></i>Budget remaining</span>
+        </div>
+      </div>
     </section>
 
     <section class="summary-grid" aria-label="Budget summary">
@@ -58,8 +78,8 @@
         <strong id="remainingSummary">$0</strong>
       </article>
       <article class="summary-card">
-        <span>Savings rate</span>
-        <strong id="savingsSummary">0%</strong>
+        <span>Planned balance</span>
+        <strong id="plannedSummary">$0</strong>
       </article>
     </section>
 
@@ -98,7 +118,8 @@
       <header class="category-header">
         <div>
           <input class="category-name" type="text" aria-label="Category name" maxlength="50">
-          <p class="category-totals"><span class="category-budget">$0</span> budgeted · <span class="category-actual">$0</span> actual</p>
+          <p class="category-totals"><span class="category-budget">$0</span> budgeted · <span class="category-actual">$0</span> actual · <span class="category-variance">$0 left</span></p>
+          <div class="category-progress" aria-hidden="true"><span></span></div>
         </div>
         <div class="category-actions">
           <button class="text-button add-item" type="button">Add item</button>
